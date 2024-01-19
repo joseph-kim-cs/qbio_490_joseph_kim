@@ -1,5 +1,8 @@
-# Object file
-*.o
-
-# Ada Library Information
-*.ali
+## Mac Stuff
+.Icon
+.DS_Store
+### TCGA Data
+GDCdata
+MANIFEST*
+htseq_h5*
+analysis_data
