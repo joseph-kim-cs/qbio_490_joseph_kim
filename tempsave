@@ -92,3 +92,83 @@ KM_plot <- survplot$plot + theme_bw() + theme(axis.title = element_text(size=20)
 
 KM_plot
 ```
+
+
+2. 
+```{r}
+maf_query <- GDCquery(
+    project = 'TCGA-SKCM', 
+    data.category = "Simple Nucleotide Variation", 
+    access = "open", # we only have access to somatic mutations which are open access
+    data.type = "Masked Somatic Mutation", 
+    workflow.type = "Aliquot Ensemble Somatic Variant Merging and Masking"
+)
+
+GDCdownload(maf_query)
+
+maf <- GDCprepare(maf_query) # as long as it runs, ignore any errors
+
+rna_clinical$Tumor_Sample_Barcode <- rna_clinical$patient
+
+maf_object <- read.maf(maf = maf, 
+                       clinicalData = rna_clinical,
+                       isTCGA = TRUE)
+```
+
+```{r}
+meta_barcodes <- rna_clinical[cleaned_clinical$definition == "Metastatic", ]
+meta_barcodes <- meta_barcodes$Tumor_Sample_Barcode
+meta_maf <- subsetMaf(maf = maf_object, tsb = meta_barcodes)
+
+nonmeta_barcodes <- rna_clinical[cleaned_clinical$definition != "Metastatic", ]
+nonmeta_barcodes <- nonmeta_barcodes$Tumor_Sample_Barcode
+nonmeta_maf <- subsetMaf(maf = maf_object, tsb = nonmeta_barcodes)
+
+coOncoplot(m1 = meta_maf,
+           m2 = nonmeta_maf,
+           m1Name = "Metastatic",
+           m2Name = "Non_Metastatic",
+           borderCol = NA,
+           )
+```
+
+
+
+3. 
+```{r}
+lollipopPlot2(m1 = meta_maf, 
+              m2 = nonmeta_maf,
+              m1_name = "Metastatic",
+              m2_name = "Non_Metastatic",
+              gene = "DNAH5"
+              )
+```
+
+
+
+4. 
+```{r}
+somaticInteractions(maf = meta_maf,
+                    top = 10,
+                    pvalue = c(0.05, 0.1))
+
+somaticInteractions(maf = nonmeta_maf,
+                    top = 10,
+                    pvalue = c(0.05, 0.1))
+
+```
+
+
+
+5. 
+```{r}
+rna_genes <- as.data.frame(rna_se@rowRanges@elementMetadata)
+rna_counts <- as.data.frame(rna_se@assays@data$unstranded)
+colnames(rna_counts) = rownames(rna_clinical)
+
+rows_to_keep <- apply(rna_counts, 1, function(row) any(row >= 20))
+rna_counts <- rna_counts[rows_to_keep, ]
+
+
+```
+
