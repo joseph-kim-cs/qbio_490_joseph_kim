@@ -1,0 +1,94 @@
+Joseph Kim
+QBIO490
+25th February 2024
+
+R Review
+
+```{r setup}
+knitr::opts_knit$set(root.dir = normalizePath("C:/Users/josep/Desktop/QBIO490/qbio_490_joseph_kim/analysis_data/")) 
+```
+
+```{r}
+library(TCGAbiolinks)
+library(SummarizedExperiment)
+library(DESeq2)
+library(EnhancedVolcano)
+library(maftools)
+library(ggplot2)
+```
+
+```{r}
+clin_query <- GDCquery(project = "TCGA-SKCM",
+  data.category = "Clinical",
+  data.type = "Clinical Supplement",
+  data.format = 'BCR Biotab')
+
+GDCdownload(clin_query)
+  
+clinical.BCRtab.all <- GDCprepare(clin_query)
+  
+rad <- clinical.BCRtab.all$clinical_radiation_skcm[-c(1,2),]
+drug <- clinical.BCRtab.all$clinical_drug_skcm[-c(1,2),]
+
+```
+
+
+1. 
+```{r}
+if (!require(survival)) {
+  install.packages("survival")
+}
+
+if (!require(survminer)) {
+  install.packages("survminer")
+}
+
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+}
+
+library(survival)
+library(survminer)
+library(ggplot2)
+```
+
+```{r}
+rna_query <- GDCquery(project ="TCGA-SKCM",
+                      data.category = "Transcriptome Profiling",
+                      data.type = "Gene Expression Quantification",
+                      workflow.type = "STAR - Counts")
+
+GDCdownload(rna_query)
+rna_se <- GDCprepare(rna_query)
+
+rna_clinical <- as.data.frame(rna_se@colData)
+
+meta_mask <- ifelse(rna_clinical$definition %in% c('Metastatic', 'Primary solid Tumor'), TRUE, FALSE)
+
+cleaned_clinical <- rna_clinical[meta_mask, ]
+cleaned_clinical$survival_time <- ifelse(!is.na(cleaned_clinical$days_to_last_follow_up), cleaned_clinical$days_to_last_follow_up, cleaned_clinical$days_to_death)
+cleaned_clinical$survival_time <- as.numeric(cleaned_clinical$survival_time)
+
+cleaned_clinical$death_event <- ifelse(cleaned_clinical$vital_status == 'Alive', TRUE, FALSE)
+```
+
+```{r}
+survival_object <- Surv(time = cleaned_clinical$survival_time,
+                        event = cleaned_clinical$death_event)
+
+fit_object <- survfit(survival_object ~ definition, data = cleaned_clinical)
+```
+
+```{r}
+survplot <- ggsurvplot(fit_object,
+                       pval=TRUE,
+                       ggtheme = theme(plot.margin = unit(c(1,1,1,1), "cm")),
+                       legend = 'right')
+
+KM_plot <- survplot$plot + theme_bw() + theme(axis.title = element_text(size=20), 
+                                              axis.text = element_text(size=16),
+                                              legend.title = element_text(size=14),
+                                              legend.text = element_text(size=12))
+
+KM_plot
+```
