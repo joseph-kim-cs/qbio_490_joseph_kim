@@ -200,13 +200,32 @@ for (i in 1:nrow(drug)){
         one_hot$vaccine[which(one_hot$patient == drug$bcr_patient_barcode[i])] = 1
     }
 }
-rna_clinical$treatment_effects <- one_hot
+
+rna_clinical$radiation <- one_hot$radiation
+rna_clinical$chemo <- one_hot$chemo
+rna_clinical$immuno <- one_hot$immuno
+rna_clinical$molecular <- one_hot$molecular
+rna_clinical$vaccine <- one_hot$vaccine
+
+rna_clinical$radiation <- factor(rna_clinical$radiation)
+rna_clinical$chemo <- factor(rna_clinical$chemo)
+rna_clinical$immuno <- factor(rna_clinical$immuno)
+rna_clinical$molecular <- factor(rna_clinical$molecular)
+rna_clinical$vaccine <- factor(rna_clinical$vaccine)
 ```
 
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData = rna_counts,
                               colData = rna_clinical,
-                              design= ~ treatment_effects + race + gender + age_category)
+                              design= ~ radiation + chemo + immuno + molecular + vaccine + race + gender + vital_status)
+
+dds_obj <- DESeq(dds)
+
+resultsNames(dds_obj)
+
+results <- results(dds_obj, format = "DataFrame", contrast = c("treatment", "FALSE" , "TRUE"))
+
+results <- data.frame(results)
 ```
 
 
