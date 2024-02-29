@@ -212,12 +212,14 @@ rna_clinical$chemo <- factor(rna_clinical$chemo)
 rna_clinical$immuno <- factor(rna_clinical$immuno)
 rna_clinical$molecular <- factor(rna_clinical$molecular)
 rna_clinical$vaccine <- factor(rna_clinical$vaccine)
+
+rna_clinical$metastatic <- ifelse(rna_clinical$definition )
 ```
 
 ```{r}
 dds <- DESeqDataSetFromMatrix(countData = rna_counts,
                               colData = rna_clinical,
-                              design= ~ radiation + chemo + immuno + molecular + vaccine + race + gender + vital_status)
+                              design= ~  + radiation + chemo + immuno + molecular + vaccine + race + gender + vital_status)
 
 dds_obj <- DESeq(dds)
 
@@ -228,4 +230,22 @@ results <- results(dds_obj, format = "DataFrame", contrast = c("treatment", "FAL
 results <- data.frame(results)
 ```
 
+
+```{r}
+results$gene_name <- rna_genes$gene_name
+results$"-log10(padj)" <- -log10(results$padj) 
+
+row.names(results) <- rna_genes$gene_id
+```
+
+```{r}
+EnhancedVolcano(results,
+                lab = results$gene_name,
+                x = 'log2FoldChange',
+                y = 'pvalue',
+                title = 'Vital Status: Young (< 58) vs Old (>= 58)',
+                legendPosition = 'right',
+                pointSize = 1.0,
+                labSize = 3.0)
+```
 
