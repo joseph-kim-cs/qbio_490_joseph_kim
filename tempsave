@@ -169,6 +169,44 @@ colnames(rna_counts) = rownames(rna_clinical)
 rows_to_keep <- apply(rna_counts, 1, function(row) any(row >= 20))
 rna_counts <- rna_counts[rows_to_keep, ]
 
+rna_clinical$vital_status <- factor(rna_clinical$vital_status)
+rna_clinical$race <- factor(rna_clinical$race)
+rna_clinical$gender <- factor(rna_clinical$gender)
 
+#creation of the one_hot table
+one_hot <- data.frame(matrix(ncol = 6, nrow = 473))
+colnames(one_hot) <- c('patient', 'radiation', 'chemo', 'immuno', 'molecular', 'vaccine')
+one_hot[] <- 0
+
+one_hot$patient <- rna_clinical$patient
+one_hot$radiation <- ifelse(rna_clinical$patient %in% rad$bcr_patient_barcode, 1, 0)
+
+drug$chemo <- ifelse(drug$pharmaceutical_therapy_type == 'Chemotherapy', 1, 0)
+drug$immuno <- ifelse(drug$pharmaceutical_therapy_type == 'Immunotherapy', 1, 0)
+drug$molecular <- ifelse(drug$pharmaceutical_therapy_type == 'Targeted Molecular therapy', 1, 0)
+drug$vaccine <- ifelse(drug$pharmaceutical_therapy_type == 'Vaccine', 1, 0)
+
+for (i in 1:nrow(drug)){
+    if (drug$chemo[i] == 1) {
+        one_hot$chemo[which(one_hot$patient == drug$bcr_patient_barcode[i])] = 1
+    }
+    if (drug$immuno[i] == 1) {
+        one_hot$immuno[which(one_hot$patient == drug$bcr_patient_barcode[i])] = 1
+    }
+    if (drug$molecular[i] == 1) {
+        one_hot$molecular[which(one_hot$patient == drug$bcr_patient_barcode[i])] = 1
+    }
+    if (drug$vaccine[i] == 1) {
+        one_hot$vaccine[which(one_hot$patient == drug$bcr_patient_barcode[i])] = 1
+    }
+}
+rna_clinical$treatment_effects <- one_hot
 ```
+
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = rna_counts,
+                              colData = rna_clinical,
+                              design= ~ treatment_effects + race + gender + age_category)
+```
+
 
